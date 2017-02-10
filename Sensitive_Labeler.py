@@ -7,10 +7,11 @@ class SensitiveLabeler(Labeler):
 
     def __init__(self, **kwargs):
         self.label_name = kwargs.pop('label_name', None)
+        self.paragraphs = kwargs.pop('paragraphs', None)
 
     @inherit_docstring_from(Labeler)
-    def label(self, text):
-        print(text[0])
+    def label(self, text, index):
+        print(self.paragraphs[index])
         label = raw_input("Label (0 or 1):")
         return self.label_name.index(label[0])
 

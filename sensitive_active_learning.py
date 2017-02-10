@@ -47,12 +47,12 @@ def split_train_test(n_classes):
     tf_vectorizer = HashingVectorizer(n_features=100,
                                     stop_words='english')
     tf = tf_vectorizer.fit_transform(paragraphs)
-    X = tf.data
-    tf
-    y = [None] * len(X)
+    X = tf
+    y = [None] * X.shape[0]
+    print(len(y))
     ds = Dataset(X, y)
 
-    return tf, ds
+    return tf, ds, paragraphs
 
 
 def main():
@@ -60,7 +60,7 @@ def main():
     n_classes = 2
     E_out1, E_out2 = [], []
 
-    tf, trn_ds = split_train_test(n_classes)
+    tf, trn_ds, paragraphs = split_train_test(n_classes)
     trn_ds2 = copy.deepcopy(trn_ds)
 
 
@@ -91,7 +91,8 @@ def main():
     # img_ax.set_position([box.x0, box.y0 - box.height * 0.1, box.width,
     #                      box.height * 0.9])
     # Give each label its name (labels are from 0 to n_classes-1)
-    lbr = SensitiveLabeler(label_name=[str(lbl) for lbl in range(n_classes)])
+    lbr = SensitiveLabeler(label_name=[str(lbl) for lbl in range(n_classes)],
+                           paragraphs=paragraphs)
 
     for i in range(quota):
         # ask_id = qs.make_query()
@@ -104,7 +105,7 @@ def main():
 
         ask_id = qs2.make_query()
         print("asking sample from Random Sample")
-        lb = lbr.label(trn_ds2.data[ask_id])
+        lb = lbr.label(trn_ds2.data[ask_id], ask_id)
         trn_ds2.update(ask_id, lb)
         if i > 20:
             model.train(trn_ds2)
@@ -120,7 +121,7 @@ def main():
 
             plt.draw()
 
-    input("Press any key to continue...")
+    raw_input("Press any key to continue...")
 
 if __name__ == '__main__':
     main()
