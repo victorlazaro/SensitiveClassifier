@@ -28,7 +28,7 @@ def get_paragraphs(filenames):
 
 
             paragraphs = [paragraph for paragraph in doc.read().split('\n')
-                          if len(paragraph.strip()) > 20]
+                          if len(paragraph.strip()) > 2]
             # extend adds the elements of one list into another list
             docs.extend(paragraphs)
     return docs
