@@ -34,14 +34,11 @@ def get_paragraphs(filenames):
     return docs
 
 
-def split_train_test(n_classes):
+def make_dataset():
 
-    import random
-    n_labeled = 6
-    n_features = 10
     # Change this!
-    filenames = ['test3' + sep + f for f in listdir('test3')
-                 if isfile(join('test3', f))]
+    filenames = ['documents' + sep + f for f in listdir('documents')
+                 if isfile(join('documents', f))]
     paragraphs = np.array(get_paragraphs(filenames))
 
     tf_vectorizer = HashingVectorizer(n_features=100,
@@ -56,11 +53,11 @@ def split_train_test(n_classes):
 
 
 def main():
-    quota = 6  # ask human to label 30 samples
+    quota = 6
     n_classes = 2
     E_out1, E_out2 = [], []
 
-    tf, trn_ds, paragraphs = split_train_test(n_classes)
+    tf, trn_ds, paragraphs = make_dataset()
     trn_ds2 = copy.deepcopy(trn_ds)
 
 
@@ -107,19 +104,18 @@ def main():
         print("asking sample from Random Sample")
         lb = lbr.label(trn_ds2.data[ask_id], ask_id)
         trn_ds2.update(ask_id, lb)
-        if i > 20:
-            model.train(trn_ds2)
-            E_out2 = np.append(E_out2, 1 - model.score(tst_ds))
-
-            ax.set_xlim((0, i + 1))
-            ax.set_ylim((0, max(max(E_out1), max(E_out2)) + 0.2))
-            query_num = np.arange(0, i + 2)
-            p1.set_xdata(query_num)
-            p1.set_ydata(E_out1)
-            p2.set_xdata(query_num)
-            p2.set_ydata(E_out2)
-
-            plt.draw()
+        model.train(trn_ds2)
+            # E_out2 = np.append(E_out2, 1 - model.score(tst_ds))
+            #
+            # ax.set_xlim((0, i + 1))
+            # ax.set_ylim((0, max(max(E_out1), max(E_out2)) + 0.2))
+            # query_num = np.arange(0, i + 2)
+            # p1.set_xdata(query_num)
+            # p1.set_ydata(E_out1)
+            # p2.set_xdata(query_num)
+            # p2.set_ydata(E_out2)
+            #
+            # plt.draw()
 
     raw_input("Press any key to continue...")
 
