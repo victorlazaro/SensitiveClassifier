@@ -46,7 +46,6 @@ def make_dataset():
     tf = tf_vectorizer.fit_transform(paragraphs)
     X = tf
     y = [None] * X.shape[0]
-    print(len(y))
     ds = Dataset(X, y)
 
     return tf, ds, paragraphs
@@ -91,6 +90,7 @@ def main():
     lbr = SensitiveLabeler(label_name=[str(lbl) for lbl in range(n_classes)],
                            paragraphs=paragraphs)
 
+    labels = []
     for i in range(quota):
         # ask_id = qs.make_query()
         # print("asking sample from Uncertainty Sampling")
@@ -103,8 +103,11 @@ def main():
         ask_id = qs2.make_query()
         print("asking sample from Random Sample")
         lb = lbr.label(trn_ds2.data[ask_id], ask_id)
+        if lb not in labels:
+            labels.append(lb)
         trn_ds2.update(ask_id, lb)
-        model.train(trn_ds2)
+        if len(labels) >= 2:
+            model.train(trn_ds2)
             # E_out2 = np.append(E_out2, 1 - model.score(tst_ds))
             #
             # ax.set_xlim((0, i + 1))

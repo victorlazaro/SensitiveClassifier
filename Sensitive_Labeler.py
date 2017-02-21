@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from Tkinter import *
+#from Tkinter import *
 from libact.base.interfaces import Labeler
 from libact.utils import inherit_docstring_from
 
