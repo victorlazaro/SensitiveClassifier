@@ -46,7 +46,7 @@ def make_dataset():
     tf = tf_vectorizer.fit_transform(paragraphs)
     X = tf
     y = [None] * X.shape[0]
-    ds = Dataset(X, y)
+    ds = Dataset(X.toarray(), y)
 
     return tf, ds, paragraphs
 
