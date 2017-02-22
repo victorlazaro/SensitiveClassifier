@@ -5,11 +5,9 @@ from Sensitive_Labeler import SensitiveLabeler
 
 # libact classes
 from libact.base.dataset import Dataset
-from libact.models import LogisticRegression
+from libact.models import LogisticRegression, SVM, Perceptron
 from libact.query_strategies import UncertaintySampling, RandomSampling
-from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import HashingVectorizer
-from libact.labelers import InteractiveLabeler
 from os import listdir
 from os.path import isfile, join, sep
 
@@ -28,7 +26,7 @@ def get_paragraphs(filenames):
 
 
             paragraphs = [paragraph for paragraph in doc.read().split('\n')
-                          if len(paragraph.strip()) > 2]
+                          if len(paragraph.strip()) > 50]
             # extend adds the elements of one list into another list
             docs.extend(paragraphs)
     return docs
@@ -41,8 +39,7 @@ def make_dataset():
                  if isfile(join('documents', f))]
     paragraphs = np.array(get_paragraphs(filenames))
 
-    tf_vectorizer = HashingVectorizer(n_features=100,
-                                    stop_words='english')
+    tf_vectorizer = HashingVectorizer(n_features=100, stop_words='english')
     tf = tf_vectorizer.fit_transform(paragraphs)
     X = tf
     y = [None] * X.shape[0]
@@ -52,7 +49,7 @@ def make_dataset():
 
 
 def main():
-    quota = 6
+    quota = 5
     n_classes = 2
     E_out1, E_out2 = [], []
 
@@ -60,9 +57,9 @@ def main():
     trn_ds2 = copy.deepcopy(trn_ds)
 
 
-    # qs = UncertaintySampling(trn_ds, method='lc', model=LogisticRegression())
     qs2 = RandomSampling(trn_ds2)
 
+    # We could change this to SVM, Perceptron or Logistic Regression
     model = LogisticRegression()
 
     # fig = plt.figure()
@@ -91,36 +88,26 @@ def main():
                            paragraphs=paragraphs)
 
     labels = []
-    for i in range(quota):
-        # ask_id = qs.make_query()
-        # print("asking sample from Uncertainty Sampling")
-        # # reshape the image to its width and height
-        # lb = lbr.label(trn_ds.data[ask_id][0].reshape(8, 8))
-        # trn_ds.update(ask_id, lb)
-        # model.train(trn_ds)
-        # E_out1 = np.append(E_out1, 1 - model.score(tst_ds))
-
+    while len(labels) < 2:
         ask_id = qs2.make_query()
-        print("asking sample from Random Sample")
+        # print("asking sample from Random Sample")
         lb = lbr.label(trn_ds2.data[ask_id], ask_id)
         if lb not in labels:
             labels.append(lb)
         trn_ds2.update(ask_id, lb)
-        if len(labels) >= 2:
-            model.train(trn_ds2)
-            # E_out2 = np.append(E_out2, 1 - model.score(tst_ds))
-            #
-            # ax.set_xlim((0, i + 1))
-            # ax.set_ylim((0, max(max(E_out1), max(E_out2)) + 0.2))
-            # query_num = np.arange(0, i + 2)
-            # p1.set_xdata(query_num)
-            # p1.set_ydata(E_out1)
-            # p2.set_xdata(query_num)
-            # p2.set_ydata(E_out2)
-            #
-            # plt.draw()
 
-    raw_input("Press any key to continue...")
+    qs = UncertaintySampling(trn_ds2, method='lc', model=LogisticRegression())
+    model.train(trn_ds2)
+
+    for i in range(quota):
+        ask_id = qs.make_query()
+        # print("asking sample from Uncertainty Sampling")
+        # # reshape the image to its width and height
+        lb = lbr.label(trn_ds2.data[ask_id], ask_id)
+        trn_ds2.update(ask_id, lb)
+        model.train(trn_ds2)
+
+    input("Press any key to continue...")
 
 if __name__ == '__main__':
     main()
