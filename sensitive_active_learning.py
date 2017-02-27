@@ -2,19 +2,23 @@ import copy
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.cross_validation import train_test_split
+from sklearn.decomposition import LatentDirichletAllocation
+from sklearn.feature_extraction.text import CountVectorizer
 
 from sensitive_labeler import SensitiveLabeler
 import pickle as pk
 
 # libact classes
 from libact.base.dataset import Dataset
-from libact.models import LogisticRegression, SVM, Perceptron
+from libact.models import LogisticRegression, SVM
 from libact.query_strategies import UncertaintySampling, RandomSampling
 from sklearn.feature_extraction.text import HashingVectorizer
 from os import listdir
 from os.path import isfile, join, sep
 import pickle
 
+n_topics = 100
+n_features = 1000
 
 def compare_svm_logistic():
     quota = 40
@@ -101,7 +105,6 @@ def compare_svm_logistic():
 def get_paragraphs(filenames):
     """Get the paragraphs from a list of files"""
     # I create a list for the file contents to go in
-    import re
     docs = []
     # Then for each file I split it into paragraphs (which is a \n in these
     #   files) and then stick each paragraph into the docs list
@@ -154,69 +157,37 @@ def make_dataset():
     # Change this!
     filenames = ['documents' + sep + f for f in listdir('documents')
                  if isfile(join('documents', f))]
-    topics = []
-    file_name = 'paragraphs'
-    with open(file_name, 'rb') as f:
-        while True:
-            try:
-                topic = pickle.load(f)
-            except EOFError:
-                break
-            else:
-                topics.extend(topic)
+    # topics = []
+    # file_name = 'paragraphs'
+    # with open(file_name, 'rb') as f:
+    #     while True:
+    #         try:
+    #             topic = pickle.load(f)
+    #         except EOFError:
+    #             break
+    #         else:
+    #             topics.extend(topic)
 
-    paragraphs = np.array(topics)
+    paragraphs = np.array(get_paragraphs(filenames))
 
-    # The larger n_features is, the less # of collisions we'll have, but there's a tradeoff. Start large and decrease or vice-versa 2^18
+    tf_vectorizer = CountVectorizer(max_df=0.95, min_df=2, max_features=n_features,
+                                    stop_words='english')
+
     # preprocessing. Look at every token, classifying them as 'possible year', so that our classifier can look for patterns that include it
     # store the labels after labeling them, so that we don't have to click every time.
-    tf_vectorizer = HashingVectorizer(n_features=1000, stop_words='english')
     tf = tf_vectorizer.fit_transform(paragraphs)
-    X = tf
-    y = [None] * X.shape[0]
-    ds = Dataset(X.toarray(), y)
-
-    return tf, ds, paragraphs
-
-
-def make_lda_dataset():
-    # Change this!
-    # filenames = ['documents' + sep + f for f in listdir('documents')
-    #              if isfile(join('documents', f))]
-    # paragraphs = np.array(get_paragraphs(filenames))
-    #
-    # tf_vectorizer = HashingVectorizer(n_features=100, stop_words='english')
-    topics = []
-    file_name = 'topics'
-    # file_object = open(file_name, 'rb')
-    # tf = tf_vectorizer.fit_transform(paragraphs)
-    with open(file_name, 'rb') as f:
-        while True:
-            try:
-                topic = pickle.load(f)
-            except EOFError:
-                break
-            else:
-                topics.append(topic)
-
-    X = np.array(topics)
+    lda = LatentDirichletAllocation(n_topics=n_topics, max_iter=5,
+                                    learning_method='online',
+                                    learning_offset=50.,
+                                    random_state=0)
+    # We train LDA on our data
+    lda.fit(tf)
+    doc_topic_matrix = lda.transform(tf)
+    X = doc_topic_matrix
     y = [None] * X.shape[0]
     ds = Dataset(X, y)
 
-    attributes = []
-    attributes_file_name = 'attributes'
-    # file_object = open(file_name, 'rb')
-    # tf = tf_vectorizer.fit_transform(paragraphs)
-    with open(attributes_file_name, 'rb') as f:
-        while True:
-            try:
-                attribute = pickle.load(f)
-            except EOFError:
-                break
-            else:
-                attributes.append(attribute)
-
-    return ds
+    return tf, ds, paragraphs
 
 
 def make_dataset_supervised():
