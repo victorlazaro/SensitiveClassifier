@@ -18,31 +18,12 @@ n_top_words = 50
 
 def print_top_words(model, feature_names, n_top_words):
     """Print some meaningful output from LDA"""
-
-    topics = []
-    attributes = []
-
-
-    for topic_idx, topic in enumerate(model.exp_dirichlet_component_):
-        topics.append(topic)
-        attributes.append(" ".join([feature_names[i]
+    for topic_idx, topic in enumerate(model.components_):
+        print("Topic #%d:" % topic_idx)
+        print(" ".join([feature_names[i]
                         for i in topic.argsort()[:-n_top_words - 1:-1]]))
-
-
-    vector_file_name = "topics"
-    # attribute_file_name = "attributes"
-    # vectorObject = open(vector_file_name, 'wb')
-    # pickle.dump(topics, vectorObject)
-    # vectorObject.close()
-    # attributeObjects = open(attribute_file_name, 'ab')
-    # for ind in range(len()):
-    # pickle.dump(" ".join([feature_names[i]
-    #                     for i in topics.argsort()[:-n_top_words - 1:-1]]), attributeObjects)
-    # attributeObjects.close()
-
-        # print("Topic #%d:" % topic_idx)
-        # print(" ".join([feature_names[i]
-        #                 for i in topic.argsort()[:-n_top_words - 1:-1]]))
+#might be this "topic", print to pickle file.
+    print()
 
 
 
@@ -91,6 +72,7 @@ lda = LatentDirichletAllocation(n_topics=n_topics, max_iter=5,
 # We train LDA on our data
 lda.fit(tf)
 
+doc_matrix = lda.transform(tf)
 # We then print out the top 20 words of each topic
 tf_feature_names = tf_vectorizer.get_feature_names()
 print_top_words(lda, tf_feature_names, n_top_words)
