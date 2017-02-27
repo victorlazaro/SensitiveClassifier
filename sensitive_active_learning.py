@@ -101,6 +101,14 @@ def compare_svm_logistic():
         plt.draw()
 
 
+def preprocessing(paragraphs):
+    import re
+    processed = []
+    for paragraph in paragraphs:
+        processed.append(re.sub(r'(?<![0-9])((([0-2][0-9][0-9][0-9])|([0-9][0-9][0-9])|([0-9][0-9])|([0-9])))(?![0-9])', "possible year", paragraph))
+
+    return processed
+
 
 def get_paragraphs(filenames):
     """Get the paragraphs from a list of files"""
@@ -120,11 +128,14 @@ def get_paragraphs(filenames):
             # extend adds the elements of one list into another list
             docs.extend(paragraphs)
 
-    file_name = "paragraphs"
-    file_object = open(file_name, 'wb')
-    pk._dump(docs, file_object)
-    file_object.close()
-    return docs
+
+    paragraphs = preprocessing(docs)
+
+    # file_name = "paragraphs"
+    # file_object = open(file_name, 'wb')
+    # pk._dump(docs, file_object)
+    # file_object.close()
+    return paragraphs
 
 
 def build_test(paragraphs):
@@ -173,14 +184,11 @@ def make_dataset():
     tf_vectorizer = CountVectorizer(max_df=0.95, min_df=2, max_features=n_features,
                                     stop_words='english')
 
-    # preprocessing. Look at every token, classifying them as 'possible year', so that our classifier can look for patterns that include it
-    # store the labels after labeling them, so that we don't have to click every time.
     tf = tf_vectorizer.fit_transform(paragraphs)
     lda = LatentDirichletAllocation(n_topics=n_topics, max_iter=5,
                                     learning_method='online',
                                     learning_offset=50.,
                                     random_state=0)
-    # We train LDA on our data
     lda.fit(tf)
     doc_topic_matrix = lda.transform(tf)
     X = doc_topic_matrix
@@ -235,15 +243,14 @@ def make_dataset_supervised():
 
 
 def main():
-    # testing_main()
     quota = 40
     n_classes = 2
     E_out1 = []
 
     tf, trn_ds, paragraphs = make_dataset()
-    trn_ds2 = copy.deepcopy(trn_ds)
+    trn_ds = copy.deepcopy(trn_ds)
 
-    qs2 = RandomSampling(trn_ds2)
+    random_sampling = RandomSampling(trn_ds)
 
     logRegModel = LogisticRegression()
 
@@ -269,24 +276,24 @@ def main():
 
     labels = []
     while len(labels) < 2:
-        ask_id = qs2.make_query()
-        lb = lbr.label(trn_ds2.data[ask_id], ask_id)
+        ask_id = random_sampling.make_query()
+        lb = lbr.label(trn_ds.data[ask_id], ask_id)
         if lb == -1:
             print("Invalid label. Shutting down")
             return
         if lb not in labels:
             labels.append(lb)
-        trn_ds2.update(ask_id, lb)
+        trn_ds.update(ask_id, lb)
 
-    qs = UncertaintySampling(trn_ds2, method='lc', model=LogisticRegression())
-    logRegModel.train(trn_ds2)
+    qs = UncertaintySampling(trn_ds, method='lc', model=LogisticRegression())
+    logRegModel.train(trn_ds)
 
     for i in range(quota):
         ask_id = qs.make_query()
 
-        lb = lbr.label(trn_ds2.data[ask_id], ask_id)
-        trn_ds2.update(ask_id, lb)
-        logRegModel.train(trn_ds2)
+        lb = lbr.label(trn_ds.data[ask_id], ask_id)
+        trn_ds.update(ask_id, lb)
+        logRegModel.train(trn_ds)
 
         # E_out1 = np.append(E_out1, 1 - logRegModel.score(tst_ds))
         # ax.set_xlim((0, i + 1))
