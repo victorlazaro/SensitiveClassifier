@@ -104,12 +104,12 @@ def preprocessing(paragraphs):
     import re
     processed = []
     for paragraph in paragraphs:
-        processed.append(re.sub(r'(?<![0-9])((([0-2][0-9][0-9][0-9])|([0-9][0-9][0-9])|([0-9][0-9])|([0-9])))(?![0-9])', "possible year", paragraph))
+        processed.append(re.sub(r'(?<![0-9])((([0-2][0-9][0-9][0-9])|([0-9][0-9][0-9])|([0-9][0-9])|([0-9])))(?![0-9])', "possibleYear", paragraph))
 
     return processed
 
 
-def get_paragraphs(filenames):
+def get_paragraphs():
     """Get the paragraphs from a list of files"""
     # I create a list for the file contents to go in
     docs_non = []
@@ -120,13 +120,11 @@ def get_paragraphs(filenames):
     if (isfile(non_sensitive_file)):
         with open(non_sensitive_file, 'r') as doc:
             paragraphs = [paragraph for paragraph in doc.read().split('\n')]
-            # extend adds the elements of one list into another list
             docs_non.extend(paragraphs)
 
     if (isfile(sensitive_file)):
         with open(sensitive_file, 'r') as doc:
             paragraphs = [paragraph for paragraph in doc.read().split('\n')]
-            # extend adds the elements of one list into another list
             docs_sens.extend(paragraphs)
 
 
@@ -174,7 +172,7 @@ def make_dataset():
     filenames = ['documents' + sep + f for f in listdir('documents')
                  if isfile(join('documents', f))]
 
-    docs_non, docs_sen = get_paragraphs(filenames)
+    docs_non, docs_sen = get_paragraphs()
     mixed = np.append(docs_sen, docs_non)
 
     docs_non = np.array(docs_non)
@@ -185,8 +183,9 @@ def make_dataset():
     # paragraphs = np.array(get_paragraphs(filenames))
 
 
+
     tf_vectorizer = CountVectorizer(max_df=0.95, min_df=2, max_features=n_features,
-                                    stop_words='english')
+                                        stop_words='english')
 
     tf = tf_vectorizer.fit_transform(mixed)
     lda = LatentDirichletAllocation(n_topics=n_topics, max_iter=5,
@@ -211,8 +210,8 @@ def make_dataset():
     #
     # trn_ds2 = Dataset(X_train2, np.concatenate(
     #     [y_train2[:n_labeled], [None] * (len(y_train2) - n_labeled)]))
-
-
+    #
+    #
     # return tf, trn_ds, tst_ds, mixed, trn_ds2
     return tf, ds, mixed
 
@@ -275,7 +274,8 @@ def main():
     for i in range(quota):
         ask_id = qs.make_query()
 
-        lb = lbr.label(trn_ds_paragraphs.data[ask_id], ask_id)
+        lb = lbr.label(paragraphs[ask_id], ask_id)
+        # lb = lbr.label(trn_ds_paragraphs.data[ask_id], ask_id)
         trn_ds.update(ask_id, lb)
         logRegModel.train(trn_ds)
 

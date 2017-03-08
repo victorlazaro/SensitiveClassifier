@@ -18,7 +18,7 @@ class SensitiveLabeler(Labeler):
             self.lbl = "1"
         elif btn == "Not sensitive":
             self.lbl = "0"
-        else:
+        elif btn == "Quit":
             self.lbl = "-1"
         self.app.stop()
         self.app = None
@@ -36,6 +36,7 @@ class SensitiveLabeler(Labeler):
 
         self.app.addButton("Sensitive", self.press)
         self.app.addButton("Not sensitive", self.press)
+        self.app.addButton("Quit", self.press)
 
         self.app.go()
         if self.lbl is None:
