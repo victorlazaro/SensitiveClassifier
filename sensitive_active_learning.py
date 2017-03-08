@@ -15,7 +15,6 @@ from libact.query_strategies import UncertaintySampling, RandomSampling
 from sklearn.feature_extraction.text import HashingVectorizer
 from os import listdir
 from os.path import isfile, join, sep
-import pickle
 
 n_topics = 100
 n_features = 1000
@@ -113,29 +112,33 @@ def preprocessing(paragraphs):
 def get_paragraphs(filenames):
     """Get the paragraphs from a list of files"""
     # I create a list for the file contents to go in
-    docs = []
-    # Then for each file I split it into paragraphs (which is a \n in these
-    #   files) and then stick each paragraph into the docs list
-    for f in filenames:
-        with open(f, 'r') as doc:
-            # I use another list comprehension, ensuring that the paragraph is
-            #   only added if it's actually a paragraph (isn't 0 or 1 characters
-            #   long)
+    docs_non = []
+    docs_sens = []
+    non_sensitive_file = "test-non"
+    sensitive_file = "test-sensitive"
 
-
-            paragraphs = [paragraph for paragraph in doc.read().split('\n')
-                          if len(paragraph.strip()) > 50]
+    if (isfile(non_sensitive_file)):
+        with open(non_sensitive_file, 'r') as doc:
+            paragraphs = [paragraph for paragraph in doc.read().split('\n')]
             # extend adds the elements of one list into another list
-            docs.extend(paragraphs)
+            docs_non.extend(paragraphs)
+
+    if (isfile(sensitive_file)):
+        with open(sensitive_file, 'r') as doc:
+            paragraphs = [paragraph for paragraph in doc.read().split('\n')]
+            # extend adds the elements of one list into another list
+            docs_sens.extend(paragraphs)
 
 
-    paragraphs = preprocessing(docs)
+
+    docs_non = preprocessing(docs_non)
+    docs_sens = preprocessing(docs_sens)
 
     # file_name = "paragraphs"
     # file_object = open(file_name, 'wb')
     # pk._dump(docs, file_object)
     # file_object.close()
-    return paragraphs
+    return docs_non, docs_sens
 
 
 def build_test(paragraphs):
@@ -145,7 +148,7 @@ def build_test(paragraphs):
         with open(file_name, 'rb') as f:
             while True:
                 try:
-                    curr = pickle.load(f)
+                    curr = pk.load(f)
                 except EOFError:
                     break
                 else:
@@ -166,25 +169,26 @@ def build_test(paragraphs):
 
 def make_dataset():
     # Change this!
+    n_classes = 2
+    n_labeled = 10
     filenames = ['documents' + sep + f for f in listdir('documents')
                  if isfile(join('documents', f))]
-    # topics = []
-    # file_name = 'paragraphs'
-    # with open(file_name, 'rb') as f:
-    #     while True:
-    #         try:
-    #             topic = pickle.load(f)
-    #         except EOFError:
-    #             break
-    #         else:
-    #             topics.extend(topic)
 
-    paragraphs = np.array(get_paragraphs(filenames))
+    docs_non, docs_sen = get_paragraphs(filenames)
+    mixed = np.append(docs_sen, docs_non)
+
+    docs_non = np.array(docs_non)
+    docs_sen = np.array(docs_sen)
+    labels = [0] * len(mixed)
+    for i in range(len(docs_sen)):
+        labels[i] = 1
+    # paragraphs = np.array(get_paragraphs(filenames))
+
 
     tf_vectorizer = CountVectorizer(max_df=0.95, min_df=2, max_features=n_features,
                                     stop_words='english')
 
-    tf = tf_vectorizer.fit_transform(paragraphs)
+    tf = tf_vectorizer.fit_transform(mixed)
     lda = LatentDirichletAllocation(n_topics=n_topics, max_iter=5,
                                     learning_method='online',
                                     learning_offset=50.,
@@ -195,57 +199,33 @@ def make_dataset():
     y = [None] * X.shape[0]
     ds = Dataset(X, y)
 
-    return tf, ds, paragraphs
+
+    # X_train, X_test, y_train, y_test = train_test_split(X, labels, random_state=12, test_size=0.33)
+    # X_train2, X_test2, y_train2, y_test2 = train_test_split(mixed, labels, random_state=12, test_size=0.33)
+    #
+    #
+    #
+    # trn_ds = Dataset(X_train, np.concatenate(
+    #     [y_train[:n_labeled], [None] * (len(y_train) - n_labeled)]))
+    # tst_ds = Dataset(X_test, y_test)
+    #
+    # trn_ds2 = Dataset(X_train2, np.concatenate(
+    #     [y_train2[:n_labeled], [None] * (len(y_train2) - n_labeled)]))
 
 
-def make_dataset_supervised():
-    n_classes = 2
-    classif = []
-    class_file_name = 'test'
-    file_name = 'paragraphs'
-    with open(class_file_name, 'rb') as f:
-        while True:
-            try:
-                topic = pickle.load(f)
-            except EOFError:
-                break
-            else:
-                classif.extend(topic)
+    # return tf, trn_ds, tst_ds, mixed, trn_ds2
+    return tf, ds, mixed
 
-    y = np.array(classif)
 
-    topics = []
-    file_name = 'paragraphs'
-    with open(file_name, 'rb') as f:
-        while True:
-            try:
-                topic = pickle.load(f)
-            except EOFError:
-                break
-            else:
-                topics.extend(topic)
 
-    X = np.array(topics[:len(y)])
-
-    tf_vectorizer = HashingVectorizer(n_features=100, stop_words='english')
-    X = tf_vectorizer.fit_transform(X).toarray()
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)
-    while len(np.unique(y_train[:n_classes])) < n_classes:
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.33)
-
-    trn_ds = Dataset(X_train, np.concatenate(
-        [y_train[:n_classes], [None] * (len(y_train) - n_classes)]))
-    tst_ds = Dataset(X_test, y_test)
-
-    return trn_ds, tst_ds, topics[:len(y)]
 
 
 def main():
     quota = 40
     n_classes = 2
     E_out1 = []
+
+    # tf, trn_ds, tst_ds, paragraphs, trn_ds_paragraphs = make_dataset()
 
     tf, trn_ds, paragraphs = make_dataset()
     trn_ds = copy.deepcopy(trn_ds)
@@ -258,6 +238,9 @@ def main():
     # ax = fig.add_subplot(2, 1, 1)
     # ax.set_xlabel('Number of Queries')
     # ax.set_ylabel('Error')
+    #
+    # logRegModel.train(trn_ds)
+    # E_out1 = np.append(E_out1, 1 - logRegModel.score(tst_ds))
     #
     # query_num = np.arange(0, 1)
     # p1, = ax.plot(query_num, E_out1, 'b', label='Log Regr')
@@ -277,7 +260,8 @@ def main():
     labels = []
     while len(labels) < 2:
         ask_id = random_sampling.make_query()
-        lb = lbr.label(trn_ds.data[ask_id], ask_id)
+        # lb = lbr.label(trn_ds_paragraphs.data[ask_id], ask_id)
+        lb = lbr.label(paragraphs[ask_id], ask_id)
         if lb == -1:
             print("Invalid label. Shutting down")
             return
@@ -291,7 +275,7 @@ def main():
     for i in range(quota):
         ask_id = qs.make_query()
 
-        lb = lbr.label(trn_ds.data[ask_id], ask_id)
+        lb = lbr.label(trn_ds_paragraphs.data[ask_id], ask_id)
         trn_ds.update(ask_id, lb)
         logRegModel.train(trn_ds)
 
@@ -301,7 +285,7 @@ def main():
         # query_num = np.arange(0, i + 2)
         # p1.set_xdata(query_num)
         # p1.set_ydata(E_out1)
-
+        #
         # plt.draw()
 
     input("Press any key to continue...")
