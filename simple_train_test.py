@@ -86,14 +86,17 @@ def main():
 
     logRegModel = LogisticRegression()
 
-    # new_x = logRegModel.fit_transform(X_train, y_train)
-    prediction = logRegModel.predict(X_test)
+    temp_X = np.zeros(X_train.shape)
+    temp_y = []
+    for i in range(X_train.shape[0]):
+        temp_X[i,:] = X_train[i,:]
+        temp_y.append(y_train[i])
+        if len(set(temp_y)) >= 2:
+            logRegModel.fit(temp_X[0:i+1,:], temp_y)
+            prediction = logRegModel.predict(X_test)
+            print(accuracy_score(prediction, y_test))
 
-    print(accuracy_score(prediction, y_test))
-    # print(logRegModel.score(prediction, y_test))
-
-
-    input("Press any key to continue...")
+    input("Press enter to continue...")
 
 
 if __name__ == '__main__':
