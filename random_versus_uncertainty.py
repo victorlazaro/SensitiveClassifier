@@ -78,7 +78,7 @@ def split_train_test(num_labeled):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25)
     y_train_unlabeled = []
     y_train_unlabeled.extend(y_train[:num_labeled])
-    y_train_unlabeled.extend([[None] * len(y_train)])
+    y_train_unlabeled.extend([None] * len(y_train))
     train_ds = Dataset(X_train, y_train_unlabeled)
     test_ds = Dataset(X_test, y_test)
     labeled_train_ds = Dataset(X_train, y_train)
@@ -133,9 +133,9 @@ def main():
                                                  quota)
 
     query_num = np.arange(1, quota+1)
-    plt.plot(query_num, train_error_uncertainty, 'b', label='Uncertainty Train')
+    # plt.plot(query_num, train_error_uncertainty, 'b', label='Uncertainty Train')
     plt.plot(query_num, test_error_uncertainty, 'r', label='Uncertainty Test')
-    plt.plot(query_num, train_error_random, 'g', label='Random Train')
+    # plt.plot(query_num, train_error_random, 'g', label='Random Train')
     plt.plot(query_num, test_error_random, 'k', label='Random Test')
     plt.xlabel('Number of Queries')
     plt.ylabel('Error')
