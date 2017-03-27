@@ -49,8 +49,7 @@ def get_paragraphs():
 
     return docs_non, docs_sens
 
-
-def split_train_test(num_labeled):
+def get_sets():
     """Splits the data into training and test sets"""
     # Some hyperparameters
     n_topics = 100
@@ -75,6 +74,35 @@ def split_train_test(num_labeled):
     X = lda.transform(tf)
     y = [0] * len(docs_non)
     y.extend([1] * len(docs_sen))
+
+    return X, y, lda
+
+def split_train_test(num_labeled, X, y):
+    # """Splits the data into training and test sets"""
+    # # Some hyperparameters
+    # n_topics = 100
+    # n_features = 1000
+    #
+    # docs_non, docs_sen = get_paragraphs()
+    # mixed = []
+    # mixed.extend(docs_non)
+    # mixed.extend(docs_sen)
+    #
+    # # Turn the documents into word counts
+    # tf_vect = CountVectorizer(max_df=0.95, min_df=2, max_features=n_features,
+    #                                     stop_words='english')
+    # tf = tf_vect.fit_transform(mixed)
+    # # Turn word counts into topics
+    # lda = LatentDirichletAllocation(n_topics=n_topics, max_iter=5,
+    #                                 learning_method='online',
+    #                                 learning_offset=50.,
+    #                                 random_state=0)
+    # lda.fit(tf)
+    # # Get the data into train and test sets
+    # X = lda.transform(tf)
+    # y = [0] * len(docs_non)
+    # y.extend([1] * len(docs_sen))
+
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25)
     y_train_unlabeled = []
     y_train_unlabeled.extend(y_train[:num_labeled])
@@ -102,13 +130,41 @@ def _run(train_ds, test_ds, labeler, model, query_strat, quota):
 
     return train_error, test_error
 
+def hyperparam(X, y, lda):
+    active_results_map = {}
+    random_results_map = {}
+    parameters = [{'C': [10**-3, 10**-2, 10**-1, 1, 10, 10**2]}]
+    for hyperparams in parameters:
+        for single in hyperparams.keys():
 
-def main():
+
+    # for hyperparams in search.param_generator():
+            # LDA hyperparameters
+            topics = hyperparams['lda_topics']
+            iters = hyperparams['lda_iters']
+            # Logistic Regression hyperparameters
+            # ...
+            X_lda = lda.fit_transform(X, topics, iters)
+            avg_active_curve = []
+            avg_random_curve = []
+            for trial in range(100):
+                # Hardest part is finding a decent scoring mechanism
+                active_curve = active_learning_trial(X_lda, y, hyperparams)
+                random_curve = random_learning_trial(X_lda, y, hyperparams)
+                update_curve(avg_active_curve, active_curve)
+                update_curve(avg_random_curve, random_curve)
+            active_score = score(avg_active_curve)
+            random_score = score(avg_random_curve)
+            active_results_map[hyperparams] = active_score
+            random_results_map[hyperparams] = random_score
+
+
+def main(X, y):
     """Runs the main program"""
     # Start out with 10 instances labeled, so uncertainty sampling will work
     num_labeled = 10
 
-    train_ds, test_ds, y_train, labeled_train_ds = split_train_test(num_labeled)
+    train_ds, test_ds, y_train, labeled_train_ds = split_train_test(num_labeled, X, y)
     train_ds2 = copy.deepcopy(train_ds)
     labeler = IdealLabeler(labeled_train_ds)
 
@@ -145,23 +201,22 @@ def main():
     # plt.show()
     return test_error_uncertainty, test_error_random, quota
 
-
-if __name__ == '__main__':
+def simple(X, y):
     num_experiments = 100
     print('Running the experiment 100 times and averaging the results...')
     print('Please wait...')
-    uncertain_test_errors, random_test_errors, quota = main()
-    for i in range(num_experiments-1):
-        if (i+1) % 10 == 0:
-            print('finished', str(i+1), 'experiments...')
-        test_error_uncertainty, test_error_random, _ = main()
+    uncertain_test_errors, random_test_errors, quota = main(X, y)
+    for i in range(num_experiments - 1):
+        if (i + 1) % 10 == 0:
+            print('finished', str(i + 1), 'experiments...')
+        test_error_uncertainty, test_error_random, _ = main(X, y)
         # This should add the elements of the arrays together element-wise
         uncertain_test_errors += test_error_uncertainty
         random_test_errors += test_error_random
     # This should divide the elements of the array element-wise
     uncertain_test_errors /= 100
     random_test_errors /= 100
-    query_num = np.arange(1, quota+1)
+    query_num = np.arange(1, quota + 1)
     plt.plot(query_num, uncertain_test_errors, 'r', label='Uncertainty Test')
     plt.plot(query_num, random_test_errors, 'k', label='Random Test')
     plt.xlabel('Number of Queries')
@@ -170,3 +225,15 @@ if __name__ == '__main__':
     plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
                fancybox=True, shadow=True, ncol=5)
     plt.show()
+
+if __name__ == '__main__':
+    X, y, lda = get_sets()
+    hyperparams = False
+
+    if (hyperparams):
+        hyperparam(X, y, lda)
+    else:
+        simple(X, y)
+
+
+
