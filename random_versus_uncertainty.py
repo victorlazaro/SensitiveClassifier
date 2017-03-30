@@ -49,7 +49,7 @@ def get_paragraphs():
 
     return docs_non, docs_sens
 
-def get_sets(n_topics):
+def get_sets(n_topics, max_iters, learning_offset):
     """Splits the data into training and test sets"""
     # Some hyperparameters
     n_features = 1000
@@ -64,9 +64,9 @@ def get_sets(n_topics):
                                         stop_words='english')
     tf = tf_vect.fit_transform(mixed)
     # Turn word counts into topics
-    lda = LatentDirichletAllocation(n_topics=n_topics, max_iter=5,
+    lda = LatentDirichletAllocation(n_topics=n_topics, max_iter=max_iters,
                                     learning_method='online',
-                                    learning_offset=50.)
+                                    learning_offset=learning_offset)
     lda.fit(tf)
     # Get the data into train and test sets
     X = lda.transform(tf)
@@ -207,6 +207,7 @@ def simple(X, y):
     # plt.plot(query_num, uncertain_test_errors, 'r', label='Uncertainty Test')
     # plt.plot(query_num, random_test_errors, 'k', label='Random Test')
     # plt.xlabel('Number of Queries')
+    # plt.xticks(range(0, 100, 10), range(10,100,10))
     # plt.ylabel('Error')
     # plt.title('Uncertainty Sampling vs Random Sampling')
     # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
@@ -218,35 +219,88 @@ if __name__ == '__main__':
     min_topics = 20
     max_topics = 101
     topics_step_size = 20
-    min_iters = 5
-    max_iters = 16
+    min_iters = 2
+    max_iters = 30
     iters_step_size = 3
 
     min_offset = 5
-    max_offset = 50
+    max_offset = 30
     offset_step_size = 5
 
     lda_hyperaparams = {'n_topics': [i for i in range(min_topics, max_topics, topics_step_size)],
                         'max_iters': [i for i in range(min_iters, max_iters, iters_step_size)],
                         'learning_offset': [i for i in range(min_offset, max_offset, offset_step_size)]}
 
+    x_axis = []
     random_accuracies = []
     uncertainty_accuracies = []
 
-    for index, n_topics in enumerate(lda_hyperaparams['n_topics']):
-        print('This is the', index + 1, 'parameter testing')
-        X, y = get_sets(n_topics)
-        best_accuracy_uncertainty, best_accuracy_random = simple(X, y)
-        random_accuracies.append(best_accuracy_random)
-        uncertainty_accuracies.append(best_accuracy_uncertainty)
-    plt.plot(lda_hyperaparams['n_topics'], uncertainty_accuracies, 'r', label='Uncertainty Tests')
-    plt.plot(lda_hyperaparams['n_topics'], random_accuracies, 'k', label='Random Tests')
-    plt.xlabel('Number of Topics')
+
+    for n_topics in lda_hyperaparams['n_topics']:
+        for max_iter in lda_hyperaparams['max_iters']:
+            for learning_offset in lda_hyperaparams['learning_offset']:
+                print('Running with n_topics:', n_topics, 'max_iter:', max_iter, 'learning_offset:', learning_offset)
+                X, y = get_sets(n_topics, max_iter, learning_offset)
+                best_accuracy_uncertainty, best_accuracy_random = simple(X, y)
+                random_accuracies.append(best_accuracy_random)
+                uncertainty_accuracies.append(best_accuracy_uncertainty)
+                x_axis.append(str(n_topics) + ' ' + str(max_iter) + ' ' + str(learning_offset))
+    plt.plot(x_axis, uncertainty_accuracies, 'r', label='Uncertainty Tests')
+    plt.plot(x_axis, random_accuracies, 'k', label='Random Tests')
+    plt.xlabel('Hyperparameters')
     plt.ylabel('Accuracy')
-    plt.title('Stuff')
+    plt.title('Hyperparameter analysis')
     plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
                fancybox=True, shadow=True, ncol=5)
     plt.show()
 
+    # OPTIMAL NUM_TOPICS IS 60
+    # for index, n_topics in enumerate(lda_hyperaparams['n_topics']):
+    #     print('This is the', index + 1, 'parameter testing')
+    #     X, y = get_sets(n_topics)
+    #     best_accuracy_uncertainty, best_accuracy_random = simple(X, y)
+    #     random_accuracies.append(best_accuracy_random)
+    #     uncertainty_accuracies.append(best_accuracy_uncertainty)
+    # plt.plot(lda_hyperaparams['n_topics'], uncertainty_accuracies, 'r', label='Uncertainty Tests')
+    # plt.plot(lda_hyperaparams['n_topics'], random_accuracies, 'k', label='Random Tests')
+    # plt.xlabel('Number of Topics')
+    # plt.ylabel('Accuracy')
+    # plt.title('Num Topics')
+    # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
+    #            fancybox=True, shadow=True, ncol=5)
+    # plt.show()
+
+
+    # OPTIMAL MAX_ITERS IS 26
+    # for index, iters in enumerate(lda_hyperaparams['max_iters']):
+    #     print('This is the', index + 1, 'parameter testing')
+    #     X, y = get_sets(60, iters)
+    #     best_accuracy_uncertainty, best_accuracy_random = simple(X, y)
+    #     random_accuracies.append(best_accuracy_random)
+    #     uncertainty_accuracies.append(best_accuracy_uncertainty)
+    # plt.plot(lda_hyperaparams['max_iters'], uncertainty_accuracies, 'r', label='Uncertainty Tests')
+    # plt.plot(lda_hyperaparams['max_iters'], random_accuracies, 'k', label='Random Tests')
+    # plt.xlabel('Max Iterations')
+    # plt.ylabel('Accuracy')
+    # plt.title('Max Iters')
+    # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
+    #            fancybox=True, shadow=True, ncol=5)
+    # plt.show()
+
+    # OPTIMAL LEARNING_OFFSET IS 20
+    # for index, learning_offset in enumerate(lda_hyperaparams['learning_offset']):
+    #     print('This is the', index + 1, 'parameter testing')
+    #     X, y = get_sets(60, 26, learning_offset)
+    #     best_accuracy_uncertainty, best_accuracy_random = simple(X, y)
+    #     random_accuracies.append(best_accuracy_random)
+    #     uncertainty_accuracies.append(best_accuracy_uncertainty)
+    # plt.plot(lda_hyperaparams['learning_offset'], uncertainty_accuracies, 'r', label='Uncertainty Tests')
+    # plt.plot(lda_hyperaparams['learning_offset'], random_accuracies, 'k', label='Random Tests')
+    # plt.xlabel('Learning Offset')
+    # plt.ylabel('Accuracy')
+    # plt.title('Learning Offset')
+    # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
+    #            fancybox=True, shadow=True, ncol=5)
+    # plt.show()
 
 
