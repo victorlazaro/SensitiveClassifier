@@ -201,6 +201,7 @@ def main(X, y):
     # plt.show()
     return test_error_uncertainty, test_error_random, quota
 
+
 def simple(X, y):
     num_experiments = 100
     print('Running the experiment 100 times and averaging the results...')
