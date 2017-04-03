@@ -49,6 +49,7 @@ def get_paragraphs():
 
     return docs_non, docs_sens
 
+
 def get_sets(n_topics, max_iters, learning_offset):
     """Splits the data into training and test sets"""
     # Some hyperparameters
@@ -74,6 +75,7 @@ def get_sets(n_topics, max_iters, learning_offset):
     y.extend([1] * len(docs_sen))
 
     return X, y
+
 
 def split_train_test(num_labeled, X, y):
     # """Splits the data into training and test sets"""
@@ -103,15 +105,23 @@ def split_train_test(num_labeled, X, y):
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25)
 
+    y_train_unlabeled = [None] * len(y_train)
 
-    y_train_unlabeled = []
+    zero_index = y_train.index(0)
+    one_index = y_train.index(1)
+    y_train_unlabeled[zero_index] = 0
+    y_train_unlabeled[one_index] = 1
+    index = 0
+    # Need to ensure we have num_labeled labeled instances
+    for i in range(num_labeled-2):
+        added = False
+        while not added:
+            if y_train_unlabeled[index] is None:
+                y_train_unlabeled[index] = y_train[index]
+                added = True
+            else:
+                index += 1
 
-    y_train_unlabeled.extend(y_train[:num_labeled])
-
-    while(0 not in y_train_unlabeled or 1 not in y_train_unlabeled):
-        y_train_unlabeled.append(y_train[len(y_train_unlabeled)])
-
-    y_train_unlabeled.extend([None] * len(y_train))
     train_ds = Dataset(X_train, y_train_unlabeled)
     test_ds = Dataset(X_test, y_test)
     labeled_train_ds = Dataset(X_train, y_train)
@@ -130,19 +140,18 @@ def _run(train_ds, test_ds, labeler, model, query_strat, quota):
         train_ds.update(ask_id, label)
 
         model.train(train_ds)
-        train_error = np.append(train_error, 1 - model.score(train_ds))
-        test_error = np.append(test_error, 1 - model.score(test_ds))
+        train_error = np.append(train_error, [1 - model.score(train_ds)])
+        test_error = np.append(test_error, [1 - model.score(test_ds)])
 
     return train_error, test_error
+
 
 def main(X, y):
     """Runs the main program"""
     # Start out with 10 instances labeled, so uncertainty sampling will work
-    num_labeled = 10
+    num_labeled = 2
 
     train_ds, test_ds, y_train, labeled_train_ds = split_train_test(num_labeled, X, y)
-
-
 
     train_ds2 = copy.deepcopy(train_ds)
     labeler = IdealLabeler(labeled_train_ds)
