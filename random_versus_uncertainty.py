@@ -244,76 +244,39 @@ if __name__ == '__main__':
     x_axis = []
     random_accuracies = []
     uncertainty_accuracies = []
+    import pickle as pk
+    import os.path
 
+    x_labels_file = os.path.join('hyperparam_testing', 'x_labels1.p')
+    uncertainty_file_name = os.path.join('hyperparam_testing', 'uncertainty_accuracies1.p')
+    random_file_name = os.path.join('hyperparam_testing', 'random_accuracies1.p')
+    if not os.path.isfile(uncertainty_file_name) or not os.path.isfile(random_file_name):
+        for n_topics in lda_hyperaparams['n_topics']:
+            for max_iter in lda_hyperaparams['max_iters']:
+                for learning_offset in lda_hyperaparams['learning_offset']:
+                    print('Running with n_topics:', n_topics, 'max_iter:', max_iter, 'learning_offset:', learning_offset)
+                    X, y = get_sets(n_topics, max_iter, learning_offset)
+                    best_accuracy_uncertainty, best_accuracy_random = simple(X, y)
+                    random_accuracies.append(best_accuracy_random)
+                    uncertainty_accuracies.append(best_accuracy_uncertainty)
+                    x_axis.append(str(n_topics) + ' ' + str(max_iter) + ' ' + str(learning_offset))
+        pk.dump(uncertainty_accuracies, open(uncertainty_file_name, 'wb'))
+        pk.dump(random_accuracies, open(random_file_name, 'wb'))
+        pk.dump(x_axis, open(x_labels_file, 'wb'))
 
-    for n_topics in lda_hyperaparams['n_topics']:
-        for max_iter in lda_hyperaparams['max_iters']:
-            for learning_offset in lda_hyperaparams['learning_offset']:
-                print('Running with n_topics:', n_topics, 'max_iter:', max_iter, 'learning_offset:', learning_offset)
-                X, y = get_sets(n_topics, max_iter, learning_offset)
-                best_accuracy_uncertainty, best_accuracy_random = simple(X, y)
-                random_accuracies.append(best_accuracy_random)
-                uncertainty_accuracies.append(best_accuracy_uncertainty)
-                x_axis.append(str(n_topics) + ' ' + str(max_iter) + ' ' + str(learning_offset))
-    plt.plot(np.array(range(len(lda_hyperaparams['n_topics']) * len(lda_hyperaparams['max_iters']) * len(lda_hyperaparams['learning_offset']))), uncertainty_accuracies, 'r', label='Uncertainty Tests')
-    plt.plot(np.array(range(len(lda_hyperaparams['n_topics']) * len(lda_hyperaparams['max_iters']) * len(lda_hyperaparams['learning_offset']))), random_accuracies, 'k', label='Random Tests')
-    plt.xticks(np.array(range(len(lda_hyperaparams['n_topics']) * len(lda_hyperaparams['max_iters']) * len(lda_hyperaparams['learning_offset']))), x_axis)
-    # plt.plot(x_axis, uncertainty_accuracies, 'r', label='Uncertainty Tests')
-    # plt.plot(x_axis, random_accuracies, 'k', label='Random Tests')
-    plt.xlabel('Hyperparameters')
-    plt.ylabel('Accuracy')
-    plt.title('Hyperparameter analysis')
-    plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
-               fancybox=True, shadow=True, ncol=5)
-    plt.show()
+    else:
+        uncertainty_accuracies = pk.load(open(uncertainty_file_name, 'rb'))
+        random_accuracies = pk.load(open(random_file_name, 'rb'))
+        x_axis = pk.load(open(x_labels_file, 'rb'))
+        plt.plot(np.array(range(len(lda_hyperaparams['n_topics']) * len(lda_hyperaparams['max_iters']) * len(lda_hyperaparams['learning_offset']))), uncertainty_accuracies, 'r', label='Uncertainty Tests')
+        plt.plot(np.array(range(len(lda_hyperaparams['n_topics']) * len(lda_hyperaparams['max_iters']) * len(lda_hyperaparams['learning_offset']))), random_accuracies, 'k', label='Random Tests')
+        plt.xticks(np.array(range(len(lda_hyperaparams['n_topics']) * len(lda_hyperaparams['max_iters']) * len(lda_hyperaparams['learning_offset']))), x_axis)
+        plt.xlabel('Hyperparameters')
+        plt.ylabel('Accuracy')
+        plt.title('Hyperparameter analysis')
+        plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
+                   fancybox=True, shadow=True, ncol=5)
+        plt.show()
 
-    # OPTIMAL NUM_TOPICS IS 60
-    # for index, n_topics in enumerate(lda_hyperaparams['n_topics']):
-    #     print('This is the', index + 1, 'parameter testing')
-    #     X, y = get_sets(n_topics)
-    #     best_accuracy_uncertainty, best_accuracy_random = simple(X, y)
-    #     random_accuracies.append(best_accuracy_random)
-    #     uncertainty_accuracies.append(best_accuracy_uncertainty)
-    # plt.plot(lda_hyperaparams['n_topics'], uncertainty_accuracies, 'r', label='Uncertainty Tests')
-    # plt.plot(lda_hyperaparams['n_topics'], random_accuracies, 'k', label='Random Tests')
-    # plt.xlabel('Number of Topics')
-    # plt.ylabel('Accuracy')
-    # plt.title('Num Topics')
-    # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
-    #            fancybox=True, shadow=True, ncol=5)
-    # plt.show()
-
-
-    # OPTIMAL MAX_ITERS IS 26
-    # for index, iters in enumerate(lda_hyperaparams['max_iters']):
-    #     print('This is the', index + 1, 'parameter testing')
-    #     X, y = get_sets(60, iters)
-    #     best_accuracy_uncertainty, best_accuracy_random = simple(X, y)
-    #     random_accuracies.append(best_accuracy_random)
-    #     uncertainty_accuracies.append(best_accuracy_uncertainty)
-    # plt.plot(lda_hyperaparams['max_iters'], uncertainty_accuracies, 'r', label='Uncertainty Tests')
-    # plt.plot(lda_hyperaparams['max_iters'], random_accuracies, 'k', label='Random Tests')
-    # plt.xlabel('Max Iterations')
-    # plt.ylabel('Accuracy')
-    # plt.title('Max Iters')
-    # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
-    #            fancybox=True, shadow=True, ncol=5)
-    # plt.show()
-
-    # OPTIMAL LEARNING_OFFSET IS 20
-    # for index, learning_offset in enumerate(lda_hyperaparams['learning_offset']):
-    #     print('This is the', index + 1, 'parameter testing')
-    #     X, y = get_sets(60, 26, learning_offset)
-    #     best_accuracy_uncertainty, best_accuracy_random = simple(X, y)
-    #     random_accuracies.append(best_accuracy_random)
-    #     uncertainty_accuracies.append(best_accuracy_uncertainty)
-    # plt.plot(lda_hyperaparams['learning_offset'], uncertainty_accuracies, 'r', label='Uncertainty Tests')
-    # plt.plot(lda_hyperaparams['learning_offset'], random_accuracies, 'k', label='Random Tests')
-    # plt.xlabel('Learning Offset')
-    # plt.ylabel('Accuracy')
-    # plt.title('Learning Offset')
-    # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
-    #            fancybox=True, shadow=True, ncol=5)
-    # plt.show()
 
 
