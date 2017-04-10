@@ -9,7 +9,7 @@ from os.path import isfile
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.decomposition import LatentDirichletAllocation
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.model_selection import train_test_split, GridSearchCV
 
 from libact.base.dataset import Dataset
@@ -61,16 +61,20 @@ def get_sets(n_topics, max_iters, learning_offset):
     mixed.extend(docs_sen)
 
     # Turn the documents into word counts
-    tf_vect = CountVectorizer(max_df=0.95, min_df=2, max_features=n_features,
-                                        stop_words='english')
-    tf = tf_vect.fit_transform(mixed)
+#    tf_vect = CountVectorizer(max_df=0.95, min_df=2, max_features=n_features,
+#                                        stop_words='english')
+#    tf = tf_vect.fit_transform(mixed)
+    tfidf_vect = TfidfVectorizer(max_df=0.95, min_df=0.05, max_features=n_features,
+                                 stop_words='english')
+    tf = tfidf_vect.fit_transform(mixed)
     # Turn word counts into topics
-    lda = LatentDirichletAllocation(n_topics=n_topics, max_iter=max_iters,
-                                    learning_method='online',
-                                    learning_offset=learning_offset)
-    lda.fit(tf)
+#    lda = LatentDirichletAllocation(n_topics=n_topics, max_iter=max_iters,
+#                                    learning_method='online',
+#                                    learning_offset=learning_offset)
+#    lda.fit(tf)
     # Get the data into train and test sets
-    X = lda.transform(tf)
+#    X = lda.transform(tf)
+    X = tf.todense().tolist()
     y = [0] * len(docs_non)
     y.extend([1] * len(docs_sen))
 
@@ -229,12 +233,12 @@ if __name__ == '__main__':
     min_topics = 20
     max_topics = 101
     topics_step_size = 20
-    min_iters = 2
-    max_iters = 30
-    iters_step_size = 3
+    min_iters = 20
+    max_iters = 31
+    iters_step_size = 5
 
-    min_offset = 10
-    max_offset = 30
+    min_offset = 5
+    max_offset = 16
     offset_step_size = 5
 
     lda_hyperaparams = {'n_topics': [i for i in range(min_topics, max_topics, topics_step_size)],
@@ -247,9 +251,12 @@ if __name__ == '__main__':
     import pickle as pk
     import os.path
 
-    x_labels_file = os.path.join('hyperparam_testing', 'x_labels4.p')
-    uncertainty_file_name = os.path.join('hyperparam_testing', 'uncertainty_accuracies4.p')
-    random_file_name = os.path.join('hyperparam_testing', 'random_accuracies4.p')
+    suffix = '_tfidf.p'
+#    suffix = '_tfidf_to_lda.p'
+#    suffix = '_tf_to_lda.p'
+    x_labels_file = os.path.join('hyperparam_testing', 'x_labels'+suffix)
+    uncertainty_file_name = os.path.join('hyperparam_testing', 'uncertainty_acc'+suffix)
+    random_file_name = os.path.join('hyperparam_testing', 'random_acc'+suffix)
     if not os.path.isfile(uncertainty_file_name) or not os.path.isfile(random_file_name):
         for n_topics in lda_hyperaparams['n_topics']:
             for max_iter in lda_hyperaparams['max_iters']:
@@ -268,9 +275,9 @@ if __name__ == '__main__':
         uncertainty_accuracies = pk.load(open(uncertainty_file_name, 'rb'))
         random_accuracies = pk.load(open(random_file_name, 'rb'))
         x_axis = pk.load(open(x_labels_file, 'rb'))
-        plt.plot(np.array(range(len(lda_hyperaparams['n_topics']) * len(lda_hyperaparams['max_iters']) * len(lda_hyperaparams['learning_offset']))), uncertainty_accuracies, 'r', label='Uncertainty Tests')
-        plt.plot(np.array(range(len(lda_hyperaparams['n_topics']) * len(lda_hyperaparams['max_iters']) * len(lda_hyperaparams['learning_offset']))), random_accuracies, 'k', label='Random Tests')
-        plt.xticks(np.array(range(len(lda_hyperaparams['n_topics']) * len(lda_hyperaparams['max_iters']) * len(lda_hyperaparams['learning_offset']))), x_axis)
+        plt.plot(np.array(range(len(x_axis))), uncertainty_accuracies, 'r', label='Uncertainty Tests')
+        plt.plot(np.array(range(len(x_axis))), random_accuracies, 'k', label='Random Tests')
+        plt.xticks(np.array(range(len(x_axis))), x_axis)
         plt.xlabel('Hyperparameters')
         plt.ylabel('Accuracy')
         plt.title('Hyperparameter analysis')
