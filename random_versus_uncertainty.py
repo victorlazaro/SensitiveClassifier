@@ -233,7 +233,7 @@ if __name__ == '__main__':
     max_iters = 30
     iters_step_size = 3
 
-    min_offset = 5
+    min_offset = 10
     max_offset = 30
     offset_step_size = 5
 
@@ -247,9 +247,9 @@ if __name__ == '__main__':
     import pickle as pk
     import os.path
 
-    x_labels_file = os.path.join('hyperparam_testing', 'x_labels1.p')
-    uncertainty_file_name = os.path.join('hyperparam_testing', 'uncertainty_accuracies1.p')
-    random_file_name = os.path.join('hyperparam_testing', 'random_accuracies1.p')
+    x_labels_file = os.path.join('hyperparam_testing', 'x_labels4.p')
+    uncertainty_file_name = os.path.join('hyperparam_testing', 'uncertainty_accuracies4.p')
+    random_file_name = os.path.join('hyperparam_testing', 'random_accuracies4.p')
     if not os.path.isfile(uncertainty_file_name) or not os.path.isfile(random_file_name):
         for n_topics in lda_hyperaparams['n_topics']:
             for max_iter in lda_hyperaparams['max_iters']:
