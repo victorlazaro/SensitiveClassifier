@@ -60,21 +60,21 @@ def get_sets(n_topics, max_iters, learning_offset):
     mixed.extend(docs_non)
     mixed.extend(docs_sen)
 
-    # Turn the documents into word counts
-    tf_vect = CountVectorizer(max_df=0.95, min_df=2, max_features=n_features,
-                                       stop_words='english')
-    tf = tf_vect.fit_transform(mixed)
-#     tfidf_vect = TfidfVectorizer(max_df=0.95, min_df=0.05, max_features=n_features,
-#                                  stop_words='english')
-#     tf = tfidf_vect.fit_transform(mixed)
-    # Turn word counts into topics
-    lda = LatentDirichletAllocation(n_topics=n_topics, max_iter=max_iters,
-                                   learning_method='online',
-                                   learning_offset=learning_offset)
-    lda.fit(tf)
-    # Get the data into train and test sets
-    X = lda.transform(tf)
-    # X = tf.todense().tolist()
+    # # Turn the documents into word counts
+    # tf_vect = CountVectorizer(max_df=0.95, min_df=2, max_features=n_features,
+    #                                    stop_words='english')
+    # tf = tf_vect.fit_transform(mixed)
+    tfidf_vect = TfidfVectorizer(max_df=0.95, min_df=0.05, max_features=n_features,
+                                 stop_words='english')
+    tf = tfidf_vect.fit_transform(mixed)
+    # # Turn word counts into topics
+    # lda = LatentDirichletAllocation(n_topics=n_topics, max_iter=max_iters,
+    #                                learning_method='online',
+    #                                learning_offset=learning_offset)
+    # lda.fit(tf)
+    # # Get the data into train and test sets
+    # X = lda.transform(tf)
+    X = tf.todense().tolist()
     y = [0] * len(docs_non)
     y.extend([1] * len(docs_sen))
 
@@ -171,7 +171,7 @@ def main(X, y, seed):
                                                            uncertain_strat,
                                                            quota)
 
-    random_strat = RandomSampling(train_ds2)
+    random_strat = RandomSampling(train_ds2, random_state=seed)
     model = LogisticRegression()
     train_error_random, test_error_random = _run(train_ds2,
                                                  test_ds,
@@ -235,7 +235,7 @@ if __name__ == '__main__':
     topics_step_size = 20
     min_iters = 2
     max_iters = 31
-    iters_step_size = 5
+    iters_step_size = 3
     min_offset = 5
     max_offset = 31
     offset_step_size = 5
