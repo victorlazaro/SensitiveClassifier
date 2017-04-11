@@ -61,27 +61,27 @@ def get_sets(n_topics, max_iters, learning_offset):
     mixed.extend(docs_sen)
 
     # Turn the documents into word counts
-#    tf_vect = CountVectorizer(max_df=0.95, min_df=2, max_features=n_features,
-#                                        stop_words='english')
-#    tf = tf_vect.fit_transform(mixed)
-    tfidf_vect = TfidfVectorizer(max_df=0.95, min_df=0.05, max_features=n_features,
-                                 stop_words='english')
-    tf = tfidf_vect.fit_transform(mixed)
+    tf_vect = CountVectorizer(max_df=0.95, min_df=2, max_features=n_features,
+                                       stop_words='english')
+    tf = tf_vect.fit_transform(mixed)
+#     tfidf_vect = TfidfVectorizer(max_df=0.95, min_df=0.05, max_features=n_features,
+#                                  stop_words='english')
+#     tf = tfidf_vect.fit_transform(mixed)
     # Turn word counts into topics
-#    lda = LatentDirichletAllocation(n_topics=n_topics, max_iter=max_iters,
-#                                    learning_method='online',
-#                                    learning_offset=learning_offset)
-#    lda.fit(tf)
+    lda = LatentDirichletAllocation(n_topics=n_topics, max_iter=max_iters,
+                                   learning_method='online',
+                                   learning_offset=learning_offset)
+    lda.fit(tf)
     # Get the data into train and test sets
-#    X = lda.transform(tf)
-    X = tf.todense().tolist()
+    X = lda.transform(tf)
+    # X = tf.todense().tolist()
     y = [0] * len(docs_non)
     y.extend([1] * len(docs_sen))
 
     return X, y
 
 
-def split_train_test(num_labeled, X, y):
+def split_train_test(num_labeled, X, y, seed):
     # """Splits the data into training and test sets"""
     # # Some hyperparameters
     # n_topics = 100
@@ -107,7 +107,7 @@ def split_train_test(num_labeled, X, y):
     # y = [0] * len(docs_non)
     # y.extend([1] * len(docs_sen))
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=seed)
 
     y_train_unlabeled = [None] * len(y_train)
 
@@ -150,12 +150,12 @@ def _run(train_ds, test_ds, labeler, model, query_strat, quota):
     return train_error, test_error
 
 
-def main(X, y):
+def main(X, y, seed):
     """Runs the main program"""
     # Start out with 10 instances labeled, so uncertainty sampling will work
     num_labeled = 2
 
-    train_ds, test_ds, y_train, labeled_train_ds = split_train_test(num_labeled, X, y)
+    train_ds, test_ds, y_train, labeled_train_ds = split_train_test(num_labeled, X, y, seed)
 
     train_ds2 = copy.deepcopy(train_ds)
     labeler = IdealLabeler(labeled_train_ds)
@@ -194,17 +194,17 @@ def main(X, y):
     return test_error_uncertainty, test_error_random, quota
 
 
-def simple(X, y):
+def simple(X, y, random_seeds):
     num_experiments = 100
     print('Running the experiment 100 times and averaging the results...')
     print('Please wait...')
     best_accuracy_random = 0
     best_accuracy_uncertainty = 0
-    uncertain_test_errors, random_test_errors, quota = main(X, y)
+    uncertain_test_errors, random_test_errors, quota = main(X, y, random_seeds[0])
     for i in range(num_experiments - 1):
         if (i + 1) % 10 == 0:
             print('finished', str(i + 1), 'experiments...')
-        test_error_uncertainty, test_error_random, _ = main(X, y)
+        test_error_uncertainty, test_error_random, _ = main(X, y, random_seeds[i+1])
         # This should add the elements of the arrays together element-wise
         uncertain_test_errors += test_error_uncertainty
         random_test_errors += test_error_random
@@ -233,12 +233,11 @@ if __name__ == '__main__':
     min_topics = 20
     max_topics = 101
     topics_step_size = 20
-    min_iters = 20
+    min_iters = 2
     max_iters = 31
     iters_step_size = 5
-
     min_offset = 5
-    max_offset = 16
+    max_offset = 31
     offset_step_size = 5
 
     lda_hyperaparams = {'n_topics': [i for i in range(min_topics, max_topics, topics_step_size)],
@@ -251,19 +250,21 @@ if __name__ == '__main__':
     import pickle as pk
     import os.path
 
-    suffix = '_tfidf.p'
+    suffix = '_test_lda.p'
 #    suffix = '_tfidf_to_lda.p'
 #    suffix = '_tf_to_lda.p'
     x_labels_file = os.path.join('hyperparam_testing', 'x_labels'+suffix)
     uncertainty_file_name = os.path.join('hyperparam_testing', 'uncertainty_acc'+suffix)
     random_file_name = os.path.join('hyperparam_testing', 'random_acc'+suffix)
+    import random
+    random_seeds = random.sample(range(100), 100)
     if not os.path.isfile(uncertainty_file_name) or not os.path.isfile(random_file_name):
         for n_topics in lda_hyperaparams['n_topics']:
             for max_iter in lda_hyperaparams['max_iters']:
                 for learning_offset in lda_hyperaparams['learning_offset']:
                     print('Running with n_topics:', n_topics, 'max_iter:', max_iter, 'learning_offset:', learning_offset)
                     X, y = get_sets(n_topics, max_iter, learning_offset)
-                    best_accuracy_uncertainty, best_accuracy_random = simple(X, y)
+                    best_accuracy_uncertainty, best_accuracy_random = simple(X, y, random_seeds)
                     random_accuracies.append(best_accuracy_random)
                     uncertainty_accuracies.append(best_accuracy_uncertainty)
                     x_axis.append(str(n_topics) + ' ' + str(max_iter) + ' ' + str(learning_offset))
