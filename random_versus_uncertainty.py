@@ -50,7 +50,29 @@ def get_paragraphs():
     return docs_non, docs_sens
 
 
-def get_sets(n_topics, max_iters, learning_offset):
+def get_lda_sets(n_topics, max_iters, learning_offset):
+
+    n_features = 1000
+    docs_non, docs_sen = get_paragraphs()
+    mixed = []
+    mixed.extend(docs_non)
+    mixed.extend(docs_sen)
+
+    tf_vect = CountVectorizer(max_df=0.95, min_df=2, max_features=n_features,
+                                       stop_words='english')
+    tf = tf_vect.fit_transform(mixed)
+    lda = LatentDirichletAllocation(n_topics=n_topics, max_iter=max_iters,
+                                   learning_method='online',
+                                   learning_offset=learning_offset)
+    lda.fit(tf)
+    # # Get the data into train and test sets
+    X = lda.transform(tf)
+    y = [0] * len(docs_non)
+    y.extend([1] * len(docs_sen))
+
+    return X, y
+
+def get_tf_idf_sets():
     """Splits the data into training and test sets"""
     # Some hyperparameters
     n_features = 1000
@@ -228,8 +250,8 @@ def simple(X, y, random_seeds):
     #            fancybox=True, shadow=True, ncol=5)
     # plt.show()
 
-if __name__ == '__main__':
 
+def lda_hyperparams_test():
     min_topics = 20
     max_topics = 101
     topics_step_size = 20
@@ -240,44 +262,45 @@ if __name__ == '__main__':
     max_offset = 31
     offset_step_size = 5
 
-    lda_hyperaparams = {'n_topics': [i for i in range(min_topics, max_topics, topics_step_size)],
+    lda_hyperparams = {'n_topics': [i for i in range(min_topics, max_topics, topics_step_size)],
                         'max_iters': [i for i in range(min_iters, max_iters, iters_step_size)],
                         'learning_offset': [i for i in range(min_offset, max_offset, offset_step_size)]}
 
     x_axis = []
-    random_accuracies = []
-    uncertainty_accuracies = []
+    random_accuracies_lda = []
+    uncertainty_accuracies_lda = []
     import pickle as pk
     import os.path
 
     suffix = '_test_lda.p'
-#    suffix = '_tfidf_to_lda.p'
-#    suffix = '_tf_to_lda.p'
-    x_labels_file = os.path.join('hyperparam_testing', 'x_labels'+suffix)
-    uncertainty_file_name = os.path.join('hyperparam_testing', 'uncertainty_acc'+suffix)
-    random_file_name = os.path.join('hyperparam_testing', 'random_acc'+suffix)
+    #    suffix = '_tfidf_to_lda.p'
+    #    suffix = '_tf_to_lda.p'
+    x_labels_file = os.path.join('hyperparam_testing', 'lda', 'x_labels' + suffix)
+    uncertainty_file_name = os.path.join('hyperparam_testing', 'lda', 'uncertainty_acc' + suffix)
+    random_file_name = os.path.join('hyperparam_testing', 'lda', 'random_acc' + suffix)
     import random
     random_seeds = random.sample(range(100), 100)
     if not os.path.isfile(uncertainty_file_name) or not os.path.isfile(random_file_name):
-        for n_topics in lda_hyperaparams['n_topics']:
-            for max_iter in lda_hyperaparams['max_iters']:
-                for learning_offset in lda_hyperaparams['learning_offset']:
-                    print('Running with n_topics:', n_topics, 'max_iter:', max_iter, 'learning_offset:', learning_offset)
-                    X, y = get_sets(n_topics, max_iter, learning_offset)
+        for n_topics in lda_hyperparams['n_topics']:
+            for max_iter in lda_hyperparams['max_iters']:
+                for learning_offset in lda_hyperparams['learning_offset']:
+                    print('Running with n_topics:', n_topics, 'max_iter:', max_iter, 'learning_offset:',
+                          learning_offset)
+                    X, y = get_lda_sets(n_topics, max_iter, learning_offset)
                     best_accuracy_uncertainty, best_accuracy_random = simple(X, y, random_seeds)
-                    random_accuracies.append(best_accuracy_random)
-                    uncertainty_accuracies.append(best_accuracy_uncertainty)
+                    random_accuracies_lda.append(best_accuracy_random)
+                    uncertainty_accuracies_lda.append(best_accuracy_uncertainty)
                     x_axis.append(str(n_topics) + ' ' + str(max_iter) + ' ' + str(learning_offset))
-        pk.dump(uncertainty_accuracies, open(uncertainty_file_name, 'wb'))
-        pk.dump(random_accuracies, open(random_file_name, 'wb'))
+        pk.dump(uncertainty_accuracies_lda, open(uncertainty_file_name, 'wb'))
+        pk.dump(random_accuracies_lda, open(random_file_name, 'wb'))
         pk.dump(x_axis, open(x_labels_file, 'wb'))
 
     else:
-        uncertainty_accuracies = pk.load(open(uncertainty_file_name, 'rb'))
-        random_accuracies = pk.load(open(random_file_name, 'rb'))
+        uncertainty_accuracies_lda = pk.load(open(uncertainty_file_name, 'rb'))
+        random_accuracies_lda = pk.load(open(random_file_name, 'rb'))
         x_axis = pk.load(open(x_labels_file, 'rb'))
-        plt.plot(np.array(range(len(x_axis))), uncertainty_accuracies, 'r', label='Uncertainty Tests')
-        plt.plot(np.array(range(len(x_axis))), random_accuracies, 'k', label='Random Tests')
+        plt.plot(np.array(range(len(x_axis))), uncertainty_accuracies_lda, 'r', label='Uncertainty Tests')
+        plt.plot(np.array(range(len(x_axis))), random_accuracies_lda, 'k', label='Random Tests')
         plt.xticks(np.array(range(len(x_axis))), x_axis)
         plt.xlabel('Hyperparameters')
         plt.ylabel('Accuracy')
@@ -285,6 +308,74 @@ if __name__ == '__main__':
         plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
                    fancybox=True, shadow=True, ncol=5)
         plt.show()
+
+
+def tf_idf_hyperparams_test():
+    min_topics = 20
+    max_topics = 101
+    topics_step_size = 20
+    min_iters = 2
+    max_iters = 31
+    iters_step_size = 3
+    min_offset = 5
+    max_offset = 31
+    offset_step_size = 5
+
+    tf_idf_hyperparams = {'n_topics': [i for i in range(min_topics, max_topics, topics_step_size)],
+                        'max_iters': [i for i in range(min_iters, max_iters, iters_step_size)],
+                        'learning_offset': [i for i in range(min_offset, max_offset, offset_step_size)]}
+
+    x_axis = []
+    random_accuracies_tf_idf = []
+    uncertainty_accuracies_tf_idf = []
+    import pickle as pk
+    import os.path
+
+    suffix = '_test_tf_idf.p'
+    #    suffix = '_tfidf_to_lda.p'
+    #    suffix = '_tf_to_lda.p'
+    x_labels_file = os.path.join('hyperparam_testing', 'tf_idf', 'x_labels' + suffix)
+    uncertainty_file_name = os.path.join('hyperparam_testing', 'tf_idf', 'uncertainty_acc' + suffix)
+    random_file_name = os.path.join('hyperparam_testing', 'tf_idf', 'random_acc' + suffix)
+    import random
+    random_seeds = random.sample(range(100), 100)
+    if not os.path.isfile(uncertainty_file_name) or not os.path.isfile(random_file_name):
+    #     for n_topics in tf_idf_hyperparams['n_topics']:
+    #         for max_iter in tf_idf_hyperparams['max_iters']:
+    #             for learning_offset in tf_idf_hyperparams['learning_offset']:
+    #                 print('Running with n_topics:', n_topics, 'max_iter:', max_iter, 'learning_offset:',
+    #                       learning_offset)
+        X, y = get_tf_idf_sets()
+        best_accuracy_uncertainty, best_accuracy_random = simple(X, y, random_seeds)
+        random_accuracies_tf_idf.append(best_accuracy_random)
+        uncertainty_accuracies_tf_idf.append(best_accuracy_uncertainty)
+        # x_axis.append(str(n_topics) + ' ' + str(max_iter) + ' ' + str(learning_offset))
+        # pk.dump(uncertainty_accuracies_tf_idf, open(uncertainty_file_name, 'wb'))
+        # pk.dump(random_accuracies_tf_idf, open(random_file_name, 'wb'))
+        # pk.dump(x_axis, open(x_labels_file, 'wb'))
+
+    else:
+        uncertainty_accuracies_tf_idf = pk.load(open(uncertainty_file_name, 'rb'))
+        random_accuracies_tf_idf = pk.load(open(random_file_name, 'rb'))
+        x_axis = pk.load(open(x_labels_file, 'rb'))
+        plt.plot(np.array(range(len(x_axis))), uncertainty_accuracies_tf_idf, 'r', label='Uncertainty Tests')
+        plt.plot(np.array(range(len(x_axis))), random_accuracies_tf_idf, 'k', label='Random Tests')
+        plt.xticks(np.array(range(len(x_axis))), x_axis)
+        plt.xlabel('Hyperparameters')
+        plt.ylabel('Accuracy')
+        plt.title('Hyperparameter analysis')
+        plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
+                   fancybox=True, shadow=True, ncol=5)
+        plt.show()
+
+
+if __name__ == '__main__':
+
+    lda_hyperparams_test()
+
+    # tf_idf_hyperparams_test()
+
+
 
 
 
